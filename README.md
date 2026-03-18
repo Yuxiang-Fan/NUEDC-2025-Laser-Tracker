@@ -3,46 +3,46 @@
 **Author**: Yuxiang Fan | Tongji University
 
 ## 📝 Project Overview
-This repository contains the complete visual control solution for Task 2 of the 2025 National Undergraduate Electronics Design Contest (NUEDC) Question E. The system utilizes an OpenMV4 module as the core vision processor to drive a 2D Pan-Tilt gimbal, enabling the fast and precise tracking of a target center on A4 UV-sensitive paper and hitting it with a 405nm laser pointer within a strict 2-second time limit.
+This repository provides a vision-based control implementation for Task 2 of the 2025 National Undergraduate Electronics Design Contest (NUEDC), Question E. The system utilizes an OpenMV4 module as the primary vision processor to coordinate a 2D Pan-Tilt gimbal. The design objective is to identify target centers on A4 UV-sensitive paper and direct a 405nm laser pointer to the target within a 2-second interval.
 
-## 🛠️ Hardware Architecture
-* **Vision Controller**: OpenMV4 (powered by STM32H7), chosen for its high frame rate and efficient machine vision capabilities.
-* **Actuators**: Custom 2D Pan-Tilt gimbal driven by two PWM servos (Pan and Tilt), with control steps strictly limited to ±5°.
-* **Laser Module**: 405nm blue-violet laser pointer (optical power ≤ 10mW). *(Note: A red laser was used during the debugging phase as an alternative).*
+## 🛠️ Hardware Configuration
+* **Vision Processor**: OpenMV4 (STM32H7-based), utilized for image acquisition and real-time feature processing.
+* **Actuators**: A 2D Pan-Tilt gimbal driven by two PWM-controlled servos. Servo movements are constrained to ±5° increments per control cycle.
+* **Laser Module**: 405nm blue-violet laser (optical power ≤ 10mW). A red laser was employed for calibration during the development phase.
 
-## 🧠 Software & Algorithms
-The software architecture forms a robust closed-loop control system, integrating image acquisition, feature matching, error filtering, and actuator execution.
+## 🧠 Control Logic & Algorithms
+The system implements a closed-loop control architecture integrating feature recognition, signal filtering, and positional adjustment.
 
-**1. Target Recognition (NCC Algorithm)**
-We utilize the Normalized Cross-Correlation (NCC) algorithm in the LAB color space to rapidly match and filter black frame targets. The mathematical model for the matching degree is:
+### 1. Target Recognition (NCC Algorithm)
+The implementation employs the Normalized Cross-Correlation (NCC) algorithm within the LAB color space to identify rectangular frames. The matching degree is defined by the following mathematical model:
 
-$$NCC = \frac{\sum_{x,y}(I_1(x,y)-I_1(p_x,p_y))(I_2(x+d,y)-I_2(p_x+d,p_y))}{\sqrt{\sum_{x,y}(I_1(x,y)-I_1(p_x,p_y))^2\sum_{x,y}(I_2(x+d,y)-I_2(p_x+d,p_y))^2}}$$
+$$NCC = \frac{\sum_{x,y}(I_1(x,y)-\bar{I}_1)(I_2(x+d,y)-\bar{I}_2)}{\sqrt{\sum_{x,y}(I_1(x,y)-\bar{I}_1)^2 \sum_{x,y}(I_2(x+d,y)-\bar{I}_2)^2}}$$
 
-*(Where $I_1(x,y)$ is the original image pixel value, and $I_2(x+d,y)$ is the target image pixel value after offset.)*
+*(Where $I_1$ represents the source image pixel values and $I_2$ represents the target template values after coordinate offset $d$.)*
 
-**2. Moving Average Filter**
-To suppress high-frequency jitter caused by mechanical dead zones and rapid gimbal movements, a 5-frame moving average buffer is introduced in the feedback channel to smooth the pixel errors ($e_x, e_y$) before they are fed into the controller.
+### 2. Error Filtering
+To mitigate high-frequency jitter resulting from mechanical backlash or rapid transitions, a 5-frame moving average filter is applied to the calculated pixel errors ($e_x, e_y$) prior to the control stage.
 
-**3. Positional PID Control**
-Decoupled positional PID controllers are implemented for the two axes:
-* **Pan (Horizontal)**: $K_p = 0.07$, no integral/derivative terms.
-* **Tilt (Vertical)**: $K_p = 0.08$, no integral/derivative terms.
-* **The PID output is scaled by a factor of 0.9 to prevent overshoot oscillation.**
+### 3. Positional PID Control
+Decoupled proportional control is applied to the horizontal and vertical axes:
+* **Pan (Horizontal)**: $K_p = 0.07$
+* **Tilt (Vertical)**: $K_p = 0.08$
+* **Output Scaling**: A damping factor of $0.9$ is applied to the final output to reduce potential overshoot and oscillation during convergence.
 
-## 📊 Performance Validation
-The system demonstrates excellent steady-state convergence and anti-interference capabilities.
+## 📊 Experimental Results
+The following table summarizes the measured performance across different test scenarios.
 
-| Test Scenario | Initial Constraint | Chassis Status | Max Laser Error Distance ($D$) | Result |
+| Scenario | Initial Condition | Target Status | Max Deviation ($D$) | Observation |
 | :--- | :--- | :--- | :--- | :--- |
-| **Test 1** | Fixed position | Stationary | 1.6 cm | Hit target |
-| **Test 2** | Fixed position | Stationary | 1.8 cm | Hit target |
-| **Test 3** | Arbitrary position | Stationary | 3.8 cm | Locked target |
-| **Test 4** | Arbitrary position | Stationary | 5.3 cm | Locked target |
+| **Test 1** | Fixed position | Stationary | 1.6 cm | Successful tracking |
+| **Test 2** | Fixed position | Stationary | 1.8 cm | Successful tracking |
+| **Test 3** | Arbitrary offset | Stationary | 3.8 cm | Target locked |
+| **Test 4** | Arbitrary offset | Stationary | 5.3 cm | Target locked |
 
-**Conclusion**: The system strictly controls the steady-state error within 1.8cm in a fixed position and maintains robust tracking even during step responses from arbitrary positions, successfully meeting the ≤ 2.0cm specification within 2 seconds.
+**Summary**: Experimental data indicates that the steady-state error is maintained within 1.8 cm at fixed positions. The system demonstrates reliable convergence from arbitrary starting coordinates, meeting the requirement of ≤ 2.0 cm deviation within the specified 2-second timeframe.
 
-## 🚀 Quick Start
-1. Clone this repository to your local machine.
-2. Copy `main.py` and `pid.py` from the `src/` directory directly to the root directory of your OpenMV flash drive.
-3. Fine-tune the `LAB_THRESHOLD` parameters in the configuration section of `main.py` according to your ambient lighting.
-4. Power on the system. The LED indicator will light up, the gimbal will reset to its center position, and tracking will commence.
+## 🚀 Deployment
+1. Clone the repository to the local environment.
+2. Transfer `main.py` and `pid.py` from the `src/` directory to the root directory of the OpenMV module.
+3. Adjust the `LAB_THRESHOLD` parameters in `main.py` to account for specific ambient lighting conditions.
+4. Upon power-up, the system undergoes a centering routine before entering the active tracking state.
